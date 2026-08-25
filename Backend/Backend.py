@@ -1,4 +1,4 @@
-import os
+﻿import os
 import io
 import json
 import base64
@@ -33,13 +33,14 @@ os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 MODELS_DIR = os.path.join(ROOT_DIR, 'models')
 
-NEO4J_URI = "neo4j://127.0.0.1:7687"
-NEO4J_USERNAME = "neo4j"
-NEO4J_PASSWORD = "12345678"
+NEO4J_URI = os.getenv("NEO4J_URI", "bolt://127.0.0.1:7687")
+NEO4J_USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
+NEO4J_PASSWORD = os.getenv("NEO4J_PASSWORD", "12345678")
+NEO4J_DATABASE = os.getenv("NEO4J_DATABASE", None)
 
 try:
     neo4j_driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
-    print("Neo4j driver initialized.")
+    print(f"Neo4j driver initialized for {NEO4J_URI}.")
 except Exception as e:
     print("Error initializing Neo4j driver:", e)
     neo4j_driver = None
@@ -179,6 +180,7 @@ def remove_bg():
 
     try:
         input_image = Image.open(file.stream).convert('RGB')
+        input_image.thumbnail((1200, 1200))
         
         # Remove background using rembg (U2-Net)
         output_rgba = rembg.remove(input_image)
@@ -303,11 +305,15 @@ def predict():
         target_disease_name = disease_res
         if neo4j_driver and target_disease_name.lower() != 'sehat':
             try:
-                with neo4j_driver.session() as session:
+                session_kwargs = {'database': NEO4J_DATABASE} if NEO4J_DATABASE else {}
+                with neo4j_driver.session(**session_kwargs) as session:
+                    # Alur Query Ontologi Konsisten (Sesuai Revisi Dosen):
+                    # Predicted Symptom -> Symptom Node -> Disease/Pest -> CausalFactor/Treatment
                     query = """
-                    MATCH (n)
-                    WHERE (n:Disease OR n:Pest) AND n.category = $category
-                    OPTIONAL MATCH (n)-[:HAS_SYMPTOM]->(s:Symptom)
+                    MATCH (s:Symptom)
+                    WHERE s.category = $category OR s.name_id CONTAINS $category
+                    MATCH (n)-[:HAS_SYMPTOM]->(s)
+                    WHERE n:Disease OR n:Pest
                     OPTIONAL MATCH (n)-[:FAVORED_BY]->(c:CausalFactor)
                     OPTIONAL MATCH (n)-[:TREATED_WITH]->(t:Treatment)
                     RETURN labels(n)[0] AS type, n.name_id AS d_id, n.name_en AS d_en,
@@ -379,3 +385,4 @@ def predict():
 if __name__ == '__main__':
     print("Starting Flask App on port 5000...", flush=True)
     app.run(debug=True, use_reloader=False, host='0.0.0.0', port=5000)
+

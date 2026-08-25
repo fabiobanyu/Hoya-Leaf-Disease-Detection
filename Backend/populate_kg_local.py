@@ -15,10 +15,13 @@ import sys
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
+import os
+
 # ── Konfigurasi Neo4j Lokal ──────────────────────────────────
-URI = "neo4j://127.0.0.1:7687"
-USERNAME = "neo4j"
-PASSWORD = "12345678"
+URI = os.getenv("NEO4J_URI", "bolt://127.0.0.1:7687")
+USERNAME = os.getenv("NEO4J_USERNAME", "neo4j")
+PASSWORD = os.getenv("NEO4J_PASSWORD", "12345678")
+DATABASE = os.getenv("NEO4J_DATABASE", None)
 
 # ── Data 10 Spesies Hoya ─────────────────────────────────────
 species_list = [
@@ -286,7 +289,8 @@ def main():
         print("   Pastikan Neo4j Desktop sedang berjalan.")
         return
 
-    with driver.session() as session:
+    session_kwargs = {'database': DATABASE} if DATABASE else {}
+    with driver.session(**session_kwargs) as session:
 
         # ── 1. Buat Constraints (IF NOT EXISTS = aman) ────────
         print("📌 Membuat constraints (jika belum ada)...")
@@ -359,16 +363,20 @@ def main():
             if not label:
                 continue
 
-            # Gejala (HAS_SYMPTOM)
+            # Gejala (HAS_SYMPTOM) - diset properti category agar query diawali dari Node Symptom
+            cat = next((d["category"] for d in diseases if d["en"] == entity_en), None)
+            if not cat:
+                cat = next((p["category"] for p in pests if p["en"] == entity_en), None)
+
             for sym in data["symptoms"]:
                 session.run(
                     f"""
                     MATCH (n:{label} {{name_en: $name}})
                     MERGE (s:Symptom {{name_en: $s_en}})
-                    SET s.name_id = $s_id
+                    SET s.name_id = $s_id, s.category = $cat
                     MERGE (n)-[:HAS_SYMPTOM]->(s)
                     """,
-                    name=entity_en, s_en=sym["en"], s_id=sym["id"]
+                    name=entity_en, s_en=sym["en"], s_id=sym["id"], cat=cat
                 )
                 sym_count += 1
 
