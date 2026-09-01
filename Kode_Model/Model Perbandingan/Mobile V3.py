@@ -85,12 +85,9 @@ def main():
     print("=" * 65)
 
     # 1. Load Paths
-    hoya_dir = r"D:\KP\Dataset_Dan_Gambar\DATASET\Magang\data_real_KP"
-    if not os.path.exists(hoya_dir) or len(get_all_hoya_paths(hoya_dir)) == 0:
-        hoya_dir = r"D:\KP\Dataset_Dan_Gambar\DATASET\data_real_KP"
-
-    neg_pool_dir = r"D:\KP\Dataset_Dan_Gambar\negative_pool"
-    neg_leaves_dir = r"D:\KP\Dataset_Dan_Gambar\negative_leaves"
+    hoya_dir = r"D:\FILE AND TASK\MBKM\Dataset MBKM\data_real_KP"
+    neg_pool_dir = r"D:\FILE AND TASK\MBKM\Dataset MBKM\Dataset Non-Hoya\negative_pool"
+    neg_leaves_dir = r"D:\FILE AND TASK\MBKM\Dataset MBKM\Dataset Non-Hoya\negative_leaves"
 
     hoya_paths = get_all_hoya_paths(hoya_dir)
     neg_paths = get_all_neg_paths(neg_pool_dir, neg_leaves_dir)
@@ -153,7 +150,7 @@ def main():
 
     # 5. Training Loop
     best_acc = 0.0
-    models_dir = r"D:\KP\WebEval\models"
+    models_dir = r"D:\FILE AND TASK\MBKM\Hoya-Leaf-Disease-Detection-main\models"
     os.makedirs(models_dir, exist_ok=True)
     save_path = os.path.join(models_dir, "MobileNetV3 Small - Guard Final Model.pth")
 
